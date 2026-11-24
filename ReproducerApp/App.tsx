@@ -1,5 +1,7 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Image, StatusBar, StyleSheet, Text, View } from 'react-native';
+
+const source = require('./assets/test-pattern.png');
 
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -20,6 +22,12 @@ function App() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+      <Row title="Image, resizeMode cover">
+        <Image source={source} resizeMode="cover" style={styles.fill} />
+      </Row>
+      <Row title="View (control)">
+        <View style={[styles.fill, styles.plain]} />
+      </Row>
     </View>
   );
 }
@@ -30,6 +38,8 @@ const styles = StyleSheet.create({
   title: { color: 'white', fontSize: 18, marginHorizontal: 16, marginBottom: 8 },
   items: { flexDirection: 'row', marginHorizontal: 16, gap: 8 },
   item: { flex: 1, height: 90, backgroundColor: 'green', overflow: 'hidden' },
+  fill: { width: '100%', height: '100%' },
+  plain: { backgroundColor: 'magenta' },
 });
 
 export default App;
