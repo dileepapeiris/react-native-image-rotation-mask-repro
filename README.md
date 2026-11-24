@@ -36,6 +36,23 @@ In the simulator turn on Device > Slow Animations, then rotate with Cmd+Right an
 | Rotating landscape to portrait | image already at portrait width, green gap on the right of each item | resizes smoothly |
 | Rotating portrait to landscape | no gap (the image grows into space the item already covers) | resizes smoothly |
 
+## With the fix
+
+Branch [`fix/ios-image-view-mask-animation`](https://github.com/dileepapeiris/react-native/tree/fix/ios-image-view-mask-animation)
+reuses the mask layer React Native installs on the image view and copies the `bounds.size` animation
+UIKit put on the image view's layer onto the mask path, so the mask follows the view. Tested here by
+patching `node_modules/react-native` and building React Native from source
+(`RCT_USE_PREBUILT_RNCORE=0 pod install`; the template uses the prebuilt core by default).
+
+| Moment | Image row | View row |
+| --- | --- | --- |
+| Rotating landscape to portrait | fills its item through the whole animation | unchanged |
+| Portrait and landscape at rest | identical to before | unchanged |
+
+- `media/before-after-0.2s.png`: the same moment without and with the fix.
+- `media/fixed-landscape-to-portrait-0.2s.png`, `media/fixed-landscape-to-portrait-frames.png`,
+  `media/fixed-landscape-to-portrait-slow.gif`, `media/fixed-landscape-to-portrait-slow.mp4`: the fixed run.
+
 ## Media
 
 All recordings use Slow Animations, so the 0.4 s rotation takes about 3.3 s.
