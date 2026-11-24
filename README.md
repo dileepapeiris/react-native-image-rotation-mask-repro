@@ -1,79 +1,54 @@
-# react-native-image-rotation-mask-repro
+# React Native iOS: `Image` is clipped to its final size during rotation
 
-![Build](https://github.com/dileepapeiris/react-native-image-rotation-mask-repro/workflows/Pre%20Merge%20Checks/badge.svg)
+Reproducer for a React Native iOS bug, made from the
+[community reproducer template](https://github.com/react-native-community/reproducer-react-native).
+React Native 0.88.1, iPhone 17 Pro simulator, iOS 26.5, Xcode 27.2, 11/24/26.
 
-This is your new React Native Reproducer project.
+An `<Image>` inside a view that clips (`overflow: 'hidden'`) is clipped to its final size for the
+whole duration of a layout animation. During a landscape to portrait rotation the green item it sits
+in shrinks smoothly, but the image jumps to the final portrait width on the first frame, so the green
+background is visible on its right until the animation ends.
 
-# Reproducer TODO list
+The same bug reaches any library that hosts a `UIImageView` in a clipping view. It was first
+reported through `expo-image` in [expo/expo#54040](https://github.com/expo/expo/issues/54040).
 
-- [x] 1. Create a new reproducer project.
-- [ ] 2. Git clone your repository locally.
-- [ ] 3. Edit the project to reproduce the failure you're seeing.
-- [ ] 4. Push your changes, so that Github Actions can run the CI.
-- [ ] 5. Make sure the repository is public and share the link with the issue you reported.
+## Run
 
-# How to use this Reproducer
-
-This project has been created with `npx @react-native-community/cli init` and is a vanilla React Native app.
-
-> [!IMPORTANT]  
-> Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/set-up-your-environment) so that you have a working environment locally.
-
-## Step 1: Start the Metro Server
-
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
-
-```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### For iOS
-
-First, make sure you install dependencies with:
-
-```bash
-cd ios && bundle install && bundle exec pod install
-```
-
-Then you can run the iOS app with:
-
-```bash
-# using npm
-npm run ios
-
-# OR using Yarn
+```sh
+cd ReproducerApp
+yarn
 yarn ios
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+In the simulator turn on Device > Slow Animations, then rotate with Cmd+Right and Cmd+Left.
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## What the screen shows
 
-## Step 3: Modifying your App
+- `Image, resizeMode cover`: three green items, each with an `<Image resizeMode="cover">` filling it.
+- `View (control)`: the same items with a plain magenta `<View>` instead of an image.
 
-Now that you have successfully run the app, let's modify it.
+## Result
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+| Moment | Image row | View row |
+| --- | --- | --- |
+| Portrait at rest | correct | correct |
+| Landscape at rest | correct | correct |
+| Rotating landscape to portrait | image already at portrait width, green gap on the right of each item | resizes smoothly |
+| Rotating portrait to landscape | no gap (the image grows into space the item already covers) | resizes smoothly |
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+## Media
+
+All recordings use Slow Animations, so the 0.4 s rotation takes about 3.3 s.
+
+- `media/landscape-to-portrait-0.2s.png`: 0.2 s into the rotation to portrait, turned upright.
+- `media/landscape-to-portrait-frames.png`: one frame every 0.5 s of the same rotation.
+- `media/landscape-to-portrait-slow.gif` and `media/landscape-to-portrait-slow.mp4`: the full rotation.
+- `media/portrait-at-rest.png`, `media/landscape-at-rest.png`: both orientations at rest.
+
+## Cause
+
+`RCTViewComponentView.invalidateLayer` installs a new `CAShapeLayer` mask on every `UIImageView`
+subview of a clipping view, with a path equal to the subview's bounds at layout time. UIKit animates
+the image view's bounds during the rotation, but the mask is a fresh layer already at the final path,
+so the image is clipped to the final size from the first frame. The mask is installed even when the
+view has no border radius.
